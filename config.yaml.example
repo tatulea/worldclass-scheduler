@@ -1,0 +1,18 @@
+base_url: https://members.worldclass.ro
+credentials:
+  email: 
+  password: 
+clubs:
+  - id: "454"
+    name: "Park Lake"
+  - id: "458"
+    name: "Titan Park"
+interests:
+  "Park Lake":
+    - day: "Miercuri"
+      time: "17:00 - 19:00"
+      title: "BODYPUMP"
+  "Titan Park":
+    - day: "Luni"
+      time: "18:00 - 19:00"
+      title: "PILATES"
