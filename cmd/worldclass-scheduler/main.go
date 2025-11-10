@@ -21,6 +21,7 @@ func main() {
 		Use:   "worldclass-scheduler",
 		Short: "Automate fetching and booking of WorldClass classes",
 	}
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.PersistentFlags().StringVar(&cfgPath, "config", envOrDefault("WORLDCLASS_CONFIG", defaultConfigPath), "path to configuration file")
 
 	fetchCmd := &cobra.Command{
