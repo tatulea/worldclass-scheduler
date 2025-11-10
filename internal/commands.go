@@ -3,7 +3,6 @@ package worldclass
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"sort"
 	"strconv"
@@ -21,16 +20,20 @@ const (
 	idleLoopDelay      = time.Hour
 )
 
+// FetchOptions controls the behavior of RunFetch.
+type FetchOptions struct {
+	ShowAll bool
+}
+
+// ScheduleOptions controls the behavior of RunSchedule.
+type ScheduleOptions struct {
+	Loop bool
+}
+
 // RunFetch executes the fetch workflow, optionally filtering classes against the configured interests.
-func RunFetch(cfg *Config, args []string) error {
+func RunFetch(cfg *Config, opts FetchOptions) error {
 	if cfg == nil {
 		return fmt.Errorf("configuration is required")
-	}
-
-	fetchCmd := flag.NewFlagSet("fetch", flag.ExitOnError)
-	showAll := fetchCmd.Bool("all", false, "show every class regardless of configured interests")
-	if err := fetchCmd.Parse(args); err != nil {
-		return fmt.Errorf("parse flags: %w", err)
 	}
 
 	client, err := NewWorldClassClient(cfg.BaseURL, logf)
@@ -46,7 +49,7 @@ func RunFetch(cfg *Config, args []string) error {
 		return err
 	}
 
-	if !*showAll {
+	if !opts.ShowAll {
 		classes = filterClassesForInterests(classes, cfg.Interests, logf)
 	}
 
@@ -93,18 +96,12 @@ func RunFetch(cfg *Config, args []string) error {
 }
 
 // RunSchedule attempts to reserve classes that match the configured interests.
-func RunSchedule(cfg *Config, args []string) error {
+func RunSchedule(cfg *Config, opts ScheduleOptions) error {
 	if cfg == nil {
 		return fmt.Errorf("configuration is required")
 	}
 
-	scheduleCmd := flag.NewFlagSet("schedule", flag.ExitOnError)
-	loop := scheduleCmd.Bool("loop", false, "continuously monitor and book upcoming classes")
-	if err := scheduleCmd.Parse(args); err != nil {
-		return fmt.Errorf("parse flags: %w", err)
-	}
-
-	if *loop {
+	if opts.Loop {
 		return runScheduleLoop(cfg)
 	}
 
