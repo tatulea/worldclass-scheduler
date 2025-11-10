@@ -120,7 +120,7 @@ func runScheduleOnce(cfg *Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	_, err = scheduleInterests(ctx, client, cfg, cfg.Interests)
+	_, err = scheduleInterests(ctx, client, cfg, cfg.Interests, false)
 	return err
 }
 
@@ -180,7 +180,7 @@ func runScheduleLoop(cfg *Config) error {
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			results, err := scheduleInterests(ctx, client, cfg, map[string][]ClassInterest{handle.Club: {handle.Interest}})
+			results, err := scheduleInterests(ctx, client, cfg, map[string][]ClassInterest{handle.Club: {handle.Interest}}, sentryEnabled)
 			cancel()
 			if err != nil {
 				logf("Scheduling attempt failed: %v", err)
@@ -233,7 +233,21 @@ func reportLoopError(enabled bool, err error, extras map[string]string) {
 	})
 }
 
-func scheduleInterests(ctx context.Context, client *WorldClassClient, cfg *Config, interests map[string][]ClassInterest) ([]interestResult, error) {
+func reportLoopSuccess(enabled bool, classInfo Class) {
+	if !enabled {
+		return
+	}
+
+	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("mode", "loop")
+		scope.SetTag("club", classInfo.ClubName)
+		scope.SetTag("title", classInfo.Title)
+		scope.SetTag("time", classInfo.Time)
+		sentry.CaptureMessage("class booked successfully")
+	})
+}
+
+func scheduleInterests(ctx context.Context, client *WorldClassClient, cfg *Config, interests map[string][]ClassInterest, sentryEnabled bool) ([]interestResult, error) {
 	classes, err := client.FetchClasses(ctx, cfg.Credentials, cfg.Clubs)
 	if err != nil {
 		return nil, err
@@ -301,6 +315,7 @@ func scheduleInterests(ctx context.Context, client *WorldClassClient, cfg *Confi
 			if success {
 				logf("Booked successfully: %s | %s | %s | %s | ClassID: %s", classInfo.ClubName, classInfo.Day, classInfo.Time, classInfo.Title, classInfo.ClassID)
 				res.Status = statusBooked
+				reportLoopSuccess(sentryEnabled, classInfo)
 			} else {
 				logf("Booking attempted but not confirmed: %s | %s | %s | %s | ClassID: %s", classInfo.ClubName, classInfo.Day, classInfo.Time, classInfo.Title, classInfo.ClassID)
 				res.Status = statusBookingFailed
