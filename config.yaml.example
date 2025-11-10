@@ -1,4 +1,5 @@
 base_url: https://members.worldclass.ro
+timezone: Europe/Bucharest
 credentials:
   email: 
   password: 
@@ -10,9 +11,11 @@ clubs:
 interests:
   "Park Lake":
     - day: "Miercuri"
+      day_english: "Wednesday"
       time: "17:00 - 19:00"
       title: "BODYPUMP"
   "Titan Park":
     - day: "Luni"
+      day_english: "Monday"
       time: "18:00 - 19:00"
       title: "PILATES"

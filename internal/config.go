@@ -8,11 +8,15 @@ import (
 	"strings"
 )
 
-const defaultBaseURL = "https://members.worldclass.ro"
+const (
+	defaultBaseURL = "https://members.worldclass.ro"
+	defaultTZ      = "Europe/Bucharest"
+)
 
 // Config captures runtime settings loaded from config.yaml.
 type Config struct {
 	BaseURL     string
+	Timezone    string
 	Credentials Credentials
 	Clubs       []Club
 	Interests   map[string][]ClassInterest
@@ -23,6 +27,8 @@ type ClassInterest struct {
 	Day   string `yaml:"day"`
 	Time  string `yaml:"time"`
 	Title string `yaml:"title"`
+	// DayEnglish should be the English weekday name (e.g., "Monday") used for scheduling calculations.
+	DayEnglish string `yaml:"day_english"`
 }
 
 // LoadConfig reads the YAML configuration file from disk.
@@ -35,6 +41,7 @@ func LoadConfig(path string) (*Config, error) {
 
 	cfg := &Config{
 		BaseURL:   defaultBaseURL,
+		Timezone:  defaultTZ,
 		Interests: make(map[string][]ClassInterest),
 	}
 
@@ -86,6 +93,11 @@ func LoadConfig(path string) (*Config, error) {
 			case "base_url":
 				if value != "" {
 					cfg.BaseURL = value
+				}
+				section = ""
+			case "timezone":
+				if value != "" {
+					cfg.Timezone = value
 				}
 				section = ""
 			case "credentials", "clubs", "interests":
@@ -204,6 +216,10 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.BaseURL = defaultBaseURL
 	}
 
+	if cfg.Timezone == "" {
+		cfg.Timezone = defaultTZ
+	}
+
 	if cfg.Credentials.Email == "" || cfg.Credentials.Password == "" {
 		return nil, errors.New("credentials.email and credentials.password must be set")
 	}
@@ -248,6 +264,8 @@ func setInterestField(ci *ClassInterest, key, value string) error {
 	switch key {
 	case "day":
 		ci.Day = value
+	case "day_english":
+		ci.DayEnglish = value
 	case "time":
 		ci.Time = value
 	case "title":
