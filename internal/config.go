@@ -20,6 +20,7 @@ type Config struct {
 	Credentials Credentials
 	Clubs       []Club
 	Interests   map[string][]ClassInterest
+	Sentry      SentryConfig
 }
 
 // ClassInterest describes a class the user is interested in tracking or booking.
@@ -29,6 +30,11 @@ type ClassInterest struct {
 	Title string `yaml:"title"`
 	// DayEnglish should be the English weekday name (e.g., "Monday") used for scheduling calculations.
 	DayEnglish string `yaml:"day_english"`
+}
+
+// SentryConfig groups the optional monitoring settings.
+type SentryConfig struct {
+	DSN string `yaml:"dsn"`
 }
 
 // LoadConfig reads the YAML configuration file from disk.
@@ -100,7 +106,7 @@ func LoadConfig(path string) (*Config, error) {
 					cfg.Timezone = value
 				}
 				section = ""
-			case "credentials", "clubs", "interests":
+			case "credentials", "clubs", "interests", "sentry":
 				section = key
 			default:
 				return nil, fmt.Errorf("line %d: unknown top-level key %q", lineNumber, key)
@@ -198,6 +204,18 @@ func LoadConfig(path string) (*Config, error) {
 			}
 			if err := setInterestField(currentInterest, key, value); err != nil {
 				return nil, fmt.Errorf("line %d: %w", lineNumber, err)
+			}
+
+		case "sentry":
+			key, value, err := parseKeyValue(trimmed)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: %w", lineNumber, err)
+			}
+			switch key {
+			case "dsn":
+				cfg.Sentry.DSN = value
+			default:
+				return nil, fmt.Errorf("line %d: unknown sentry key %q", lineNumber, key)
 			}
 
 		default:

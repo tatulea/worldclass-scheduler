@@ -3,6 +3,8 @@ timezone: Europe/Bucharest
 credentials:
   email: 
   password: 
+sentry:
+  dsn: ""
 clubs:
   - id: "454"
     name: "Park Lake"

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/getsentry/sentry-go"
 )
 
 const (
@@ -133,6 +135,22 @@ func runScheduleLoop(cfg *Config) error {
 		return err
 	}
 
+	sentryEnabled, err := initSentry(cfg.Sentry.DSN)
+	if err != nil {
+		return err
+	}
+
+	if sentryEnabled {
+		defer sentry.Flush(5 * time.Second)
+		defer func() {
+			if r := recover(); r != nil {
+				sentry.CurrentHub().Recover(r)
+				sentry.Flush(5 * time.Second)
+				panic(r)
+			}
+		}()
+	}
+
 	for {
 		now := time.Now().In(location)
 		handle, startTime, err := nextInterestOccurrence(cfg, location, now)
@@ -142,6 +160,7 @@ func runScheduleLoop(cfg *Config) error {
 				time.Sleep(idleLoopDelay)
 				continue
 			}
+			reportLoopError(sentryEnabled, err, map[string]string{"phase": "next_interest"})
 			return err
 		}
 
@@ -165,6 +184,11 @@ func runScheduleLoop(cfg *Config) error {
 			cancel()
 			if err != nil {
 				logf("Scheduling attempt failed: %v", err)
+				reportLoopError(sentryEnabled, err, map[string]string{
+					"phase": "booking",
+					"club":  handle.Club,
+					"title": handle.Interest.Title,
+				})
 			} else if interestSatisfied(handle, results) {
 				break
 			}
@@ -181,6 +205,32 @@ func interestSatisfied(handle *scheduledInterest, results []interestResult) bool
 		}
 	}
 	return false
+}
+
+func initSentry(dsn string) (bool, error) {
+	if dsn == "" {
+		return false, nil
+	}
+
+	if err := sentry.Init(sentry.ClientOptions{Dsn: dsn}); err != nil {
+		return false, fmt.Errorf("sentry init: %w", err)
+	}
+
+	return true, nil
+}
+
+func reportLoopError(enabled bool, err error, extras map[string]string) {
+	if !enabled || err == nil {
+		return
+	}
+
+	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("mode", "loop")
+		for k, v := range extras {
+			scope.SetTag(k, v)
+		}
+		sentry.CaptureException(err)
+	})
 }
 
 func scheduleInterests(ctx context.Context, client *WorldClassClient, cfg *Config, interests map[string][]ClassInterest) ([]interestResult, error) {
