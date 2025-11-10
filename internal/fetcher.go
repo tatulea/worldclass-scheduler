@@ -14,6 +14,8 @@ import (
 	"github.com/gocolly/colly"
 )
 
+const defaultUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:144.0) Gecko/20100101 Firefox/144.0"
+
 type Credentials struct {
 	Email    string `yaml:"email"`
 	Password string `yaml:"password"`
@@ -85,6 +87,7 @@ func (c *WorldClassClient) FetchClasses(ctx context.Context, creds Credentials, 
 
 	collector := colly.NewCollector(
 		colly.AllowedDomains(c.baseURL.Host),
+		colly.UserAgent(defaultUserAgent),
 	)
 	collector.SetRequestTimeout(15 * time.Second)
 	collector.WithTransport(&http.Transport{
@@ -220,6 +223,7 @@ func (c *WorldClassClient) newBookingSession(ctx context.Context, creds Credenti
 		return nil, fmt.Errorf("build login request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	setDefaultUserAgent(req)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -262,6 +266,7 @@ func (s *bookingSession) BookClass(ctx context.Context, clubID, classID string) 
 	if err != nil {
 		return false, fmt.Errorf("build booking request: %w", err)
 	}
+	setDefaultUserAgent(req)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -298,4 +303,13 @@ func normalizeLocation(base *url.URL, loc string) string {
 	}
 
 	return base.ResolveReference(ref).String()
+}
+
+func setDefaultUserAgent(req *http.Request) {
+	if req == nil {
+		return
+	}
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", defaultUserAgent)
+	}
 }
