@@ -170,6 +170,7 @@ func runScheduleLoop(cfg *Config) error {
 		}
 
 		deadline := startTime.Add(bookingGracePeriod)
+		bookedCurrent := false
 		for {
 			if time.Now().After(deadline) {
 				logf("Unable to book %s | %s | %s before cutoff; will retry next occurrence", handle.Club, handle.Interest.Day, handle.Interest.Time)
@@ -187,10 +188,34 @@ func runScheduleLoop(cfg *Config) error {
 					"title": handle.Interest.Title,
 				})
 			} else if interestSatisfied(handle, results) {
+				bookedCurrent = true
 				break
 			}
 
 			time.Sleep(bookingRetryDelay)
+		}
+
+		if bookedCurrent {
+			reference := startTime.Add(time.Second)
+			nextHandle, nextStart, err := nextInterestOccurrence(cfg, location, reference)
+			if err != nil {
+				if errors.Is(err, errNoInterests) {
+					logf("no interests configured; sleeping for %s", idleLoopDelay)
+					time.Sleep(idleLoopDelay)
+				} else {
+					reportLoopError(sentryEnabled, err, map[string]string{"phase": "next_interest_after_success"})
+					return err
+				}
+				continue
+			}
+
+			nextWake := nextStart.Add(-bookingLeadTime).Add(-bookingEarlyBuffer)
+			if sleepDuration := time.Until(nextWake); sleepDuration > 0 {
+				logf("Next class %s | %s | %s scheduled for %s, waking at %s", nextHandle.Club, nextHandle.Interest.Day, nextHandle.Interest.Time, nextStart.Format(time.RFC1123), nextWake.Format(time.RFC1123))
+				time.Sleep(sleepDuration)
+			} else {
+				logf("Booking window already open for %s | %s | %s, attempting immediately", nextHandle.Club, nextHandle.Interest.Day, nextHandle.Interest.Time)
+			}
 		}
 	}
 }
