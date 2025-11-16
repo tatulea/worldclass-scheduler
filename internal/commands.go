@@ -166,7 +166,11 @@ func runScheduleLoop(cfg *Config) error {
 			logf("Next class %s | %s | %s scheduled for %s, waking at %s", handle.Club, handle.Interest.Day, handle.Interest.Time, startTime.Format(time.RFC1123), wakeTime.Format(time.RFC1123))
 			time.Sleep(time.Until(wakeTime))
 		} else {
-			logf("Booking window already open for %s | %s | %s, attempting immediately", handle.Club, handle.Interest.Day, handle.Interest.Time)
+			if time.Since(wakeTime) < bookingEarlyBuffer {
+				logf("Reached booking buffer for %s | %s | %s, polling until booking opens", handle.Club, handle.Interest.Day, handle.Interest.Time)
+			} else {
+				logf("Booking window already open for %s | %s | %s, attempting immediately", handle.Club, handle.Interest.Day, handle.Interest.Time)
+			}
 		}
 
 		deadline := startTime.Add(bookingGracePeriod)
@@ -214,7 +218,11 @@ func runScheduleLoop(cfg *Config) error {
 				logf("Next class %s | %s | %s scheduled for %s, waking at %s", nextHandle.Club, nextHandle.Interest.Day, nextHandle.Interest.Time, nextStart.Format(time.RFC1123), nextWake.Format(time.RFC1123))
 				time.Sleep(sleepDuration)
 			} else {
-				logf("Booking window already open for %s | %s | %s, attempting immediately", nextHandle.Club, nextHandle.Interest.Day, nextHandle.Interest.Time)
+				if time.Since(nextWake) < bookingEarlyBuffer {
+					logf("Reached booking buffer for %s | %s | %s, polling until booking opens", nextHandle.Club, nextHandle.Interest.Day, nextHandle.Interest.Time)
+				} else {
+					logf("Booking window already open for %s | %s | %s, attempting immediately", nextHandle.Club, nextHandle.Interest.Day, nextHandle.Interest.Time)
+				}
 			}
 		}
 	}
