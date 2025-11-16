@@ -15,7 +15,7 @@ import (
 const (
 	bookingLeadTime    = 26 * time.Hour
 	bookingEarlyBuffer = 1 * time.Minute
-	bookingRetryDelay  = 5 * time.Second
+	bookingRetryDelay  = 2 * time.Second
 	bookingGracePeriod = 1 * time.Minute
 	idleLoopDelay      = time.Hour
 )
